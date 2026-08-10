@@ -239,7 +239,10 @@ export function parseActionItems(raw, { people = [], baseDate = new Date() } = {
     let confidence = 0;
     if (hasMarker) confidence += 0.6;
     if (inActionBlock && isBullet) confidence += 0.5;
-    if (hasPhrase) confidence += 0.35;
+    // An obligation verb ("needs to", "please", "will send") is on its own
+    // enough to clear the bar — plenty of real commitments arrive as plain
+    // sentences with no bullet and no heading above them.
+    if (hasPhrase) confidence += 0.45;
     if (isBullet) confidence += 0.1;
     if (speaker && commitment) confidence += 0.35;
     if (speaker && /\b(?:please|kindly)\b/i.test(line)) confidence += 0.2;

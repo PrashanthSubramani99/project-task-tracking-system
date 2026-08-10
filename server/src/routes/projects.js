@@ -51,13 +51,15 @@ router.get('/', (req, res) => {
   const rows = db
     .prepare(
       `SELECT p.*, u.name AS lead_name, u.avatar_color AS lead_color,
-              (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS member_count
+              (SELECT COUNT(*) FROM project_members WHERE project_id = p.id) AS member_count,
+              (SELECT role FROM project_members WHERE project_id = p.id AND user_id = ?) AS membership_role
          FROM projects p LEFT JOIN users u ON u.id = p.lead_id
         WHERE p.id IN (${placeholders})
         ORDER BY CASE p.status WHEN 'active' THEN 0 WHEN 'on_hold' THEN 1 ELSE 2 END, p.name COLLATE NOCASE`,
     )
-    .all(...ids);
-  res.json({ projects: rows.map(withStats) });
+    .all(req.user.id, ...ids);
+  // my_role is what the UI uses to decide which controls to show.
+  res.json({ projects: rows.map((row) => withStats({ ...row, my_role: projectRole(req.user, row.id) })) });
 });
 
 router.get('/:projectId', requireCap('project.view'), (req, res) => {
