@@ -59,7 +59,7 @@ export function useDebounced(value, delay = 300) {
 export function useLocalState(key, initial) {
   const [value, setValue] = useState(() => {
     try {
-      const stored = localStorage.getItem(`teamtrack.${key}`);
+      const stored = localStorage.getItem(`infytrack.${key}`);
       return stored === null ? initial : JSON.parse(stored);
     } catch {
       return initial;
@@ -67,7 +67,7 @@ export function useLocalState(key, initial) {
   });
   useEffect(() => {
     try {
-      localStorage.setItem(`teamtrack.${key}`, JSON.stringify(value));
+      localStorage.setItem(`infytrack.${key}`, JSON.stringify(value));
     } catch {
       /* private mode, quota — not worth surfacing */
     }

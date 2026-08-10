@@ -90,7 +90,7 @@ router.post('/', requireOrgRole('admin', 'manager'), (req, res) => {
     userId: id,
     actorId: req.user.id,
     type: 'project',
-    title: 'Welcome to TeamTrack',
+    title: 'Welcome to InfyTrack',
     body: `${req.user.name} created your account. Start with the guided tour on your dashboard.`,
     link: '/dashboard',
   });

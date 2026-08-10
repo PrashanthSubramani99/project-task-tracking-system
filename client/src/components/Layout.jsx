@@ -142,9 +142,9 @@ export default function Layout({ children }) {
       <nav className={`sidebar ${navOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <span className="brand-mark">
-            <Icon name="check" size={14} />
+            <Icon name="infinity" size={16} strokeWidth={2.4} />
           </span>
-          TeamTrack
+          InfyTrack
         </div>
 
         <div className="sidebar-scroll">

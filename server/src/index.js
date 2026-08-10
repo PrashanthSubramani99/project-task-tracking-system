@@ -68,7 +68,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`TeamTrack API listening on http://localhost:${PORT}`);
+  console.log(`InfyTrack API listening on http://localhost:${PORT}`);
   if (!fs.existsSync(clientDist)) {
     console.log('Client build not found — run `npm run build` in client/, or use the Vite dev server.');
   }

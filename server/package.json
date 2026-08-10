@@ -1,9 +1,9 @@
 {
-  "name": "teamtrack-server",
+  "name": "infytrack-server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "TeamTrack API - meetings, action items, tasks, docs, reports",
+  "description": "InfyTrack API - meetings, action items, tasks, docs, reports",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

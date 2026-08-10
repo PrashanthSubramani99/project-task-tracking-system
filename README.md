@@ -1,10 +1,10 @@
-# TeamTrack
+# InfyTrack
 
 A task tracker built around the way a small team actually works: you talk on
 Google Meet, on a WhatsApp call, or across a desk — and then the things people
 agreed to do quietly disappear into a chat thread.
 
-TeamTrack closes that gap. You paste the raw notes, it pulls out the action
+InfyTrack closes that gap. You paste the raw notes, it pulls out the action
 items with an owner and a date, and one click turns them into tracked tasks
 that show up on a board, in reports, and in people's notifications.
 
@@ -49,7 +49,7 @@ Useful environment variables:
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `PORT` | `4000` | API / app port |
-| `DB_FILE` | `server/data/teamtrack.db` | SQLite file location |
+| `DB_FILE` | `server/data/infytrack.db` | SQLite file location |
 | `JWT_SECRET` | dev fallback | **Set this in production** |
 | `TOKEN_TTL` | `30d` | How long a sign-in lasts |
 | `SWEEP_INTERVAL_MIN` | `30` | How often deadline alerts are checked |

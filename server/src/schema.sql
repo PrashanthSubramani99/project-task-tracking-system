@@ -1,4 +1,4 @@
--- TeamTrack schema
+-- InfyTrack schema
 -- Meetings -> Action items -> Tasks, plus docs, service/port registry,
 -- activity trail, notifications and org/project permissions.
 

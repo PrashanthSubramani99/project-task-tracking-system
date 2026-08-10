@@ -54,9 +54,15 @@ const PATHS = {
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
   arrowRight: 'M5 12h14M12 5l7 7-7 7',
   pin: 'M12 17v5M9 10.8V4h6v6.8l2 3.2H7l2-3.2z',
+  // The brand mark: a lemniscate drawn as one continuous stroke, so the two
+  // lobes meet cleanly at the centre crossing. The lobes are deliberately wide
+  // and the mark is drawn at a heavier stroke than the UI icons, because a
+  // thinner infinity turns to mush at 24px.
+  infinity:
+    'M12 12C9.7 8.9 7.6 7.4 5.5 7.4A4.6 4.6 0 1 0 5.5 16.6C7.6 16.6 9.7 15.1 12 12C14.3 8.9 16.4 7.4 18.5 7.4A4.6 4.6 0 1 1 18.5 16.6C16.4 16.6 14.3 15.1 12 12Z',
 };
 
-export function Icon({ name, size = 16, className = '', style }) {
+export function Icon({ name, size = 16, className = '', style, strokeWidth = 1.8 }) {
   const path = PATHS[name];
   if (!path) return null;
   return (
@@ -66,7 +72,7 @@ export function Icon({ name, size = 16, className = '', style }) {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}

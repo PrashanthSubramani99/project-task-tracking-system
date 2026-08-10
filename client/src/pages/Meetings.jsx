@@ -84,7 +84,7 @@ export default function Meetings() {
               )
             }
           >
-            After your next call, paste the notes here. TeamTrack will pull out the action items and make sure
+            After your next call, paste the notes here. InfyTrack will pull out the action items and make sure
             each one has an owner and a date.
           </EmptyState>
         </div>

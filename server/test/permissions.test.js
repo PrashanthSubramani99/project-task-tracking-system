@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'teamtrack-test-'));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'infytrack-test-'));
 process.env.DB_FILE = path.join(dir, 'test.db');
 
 const { db, initSchema } = await import('../src/db.js');

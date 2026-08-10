@@ -36,10 +36,10 @@ function Setup() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="brand-mark" style={{ width: 30, height: 30, borderRadius: 9 }}>
-            <Icon name="check" size={17} />
+          <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
+            <Icon name="infinity" size={20} strokeWidth={2.4} />
           </span>
-          TeamTrack
+          InfyTrack
         </div>
 
         <form className="card" onSubmit={submit}>
@@ -111,10 +111,10 @@ export default function Auth() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="brand-mark" style={{ width: 30, height: 30, borderRadius: 9 }}>
-            <Icon name="check" size={17} />
+          <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
+            <Icon name="infinity" size={20} strokeWidth={2.4} />
           </span>
-          TeamTrack
+          InfyTrack
         </div>
 
         <form className="card" onSubmit={submit}>

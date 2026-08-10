@@ -4,7 +4,7 @@ import { api, setToken, clearToken, getToken } from './api.js';
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
-const THEME_KEY = 'teamtrack.theme';
+const THEME_KEY = 'infytrack.theme';
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -95,8 +95,8 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     const onSignedOut = () => signOut();
-    window.addEventListener('teamtrack:signed-out', onSignedOut);
-    return () => window.removeEventListener('teamtrack:signed-out', onSignedOut);
+    window.addEventListener('infytrack:signed-out', onSignedOut);
+    return () => window.removeEventListener('infytrack:signed-out', onSignedOut);
   }, [signOut]);
 
   // Poll for new alerts. Cheap, and it keeps the bell honest without sockets.

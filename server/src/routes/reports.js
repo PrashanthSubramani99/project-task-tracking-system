@@ -300,7 +300,7 @@ router.get('/export', (req, res) => {
   };
   const csv = [headers.join(','), ...rows.map((row) => headers.map((h) => escape(row[h])).join(','))].join('\n');
 
-  res.type('text/csv').set('Content-Disposition', 'attachment; filename="teamtrack-tasks.csv"').send(csv);
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="infytrack-tasks.csv"').send(csv);
 });
 
 export default router;

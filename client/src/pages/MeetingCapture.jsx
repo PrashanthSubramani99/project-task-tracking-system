@@ -193,7 +193,7 @@ export default function MeetingCapture() {
           <h1>Log a discussion</h1>
           <div className="sub">
             Paste the raw notes exactly as they were written — a WhatsApp export works as-is.
-            TeamTrack pulls out the commitments so none of them get lost.
+            InfyTrack pulls out the commitments so none of them get lost.
           </div>
         </div>
         <button className="btn" onClick={() => navigate('/meetings')} disabled={saving}>Cancel</button>

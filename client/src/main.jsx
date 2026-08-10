@@ -51,7 +51,7 @@ function Shell() {
   if (loading) {
     return (
       <div className="auth-wrap">
-        <Loading label="Starting TeamTrack…" />
+        <Loading label="Starting InfyTrack…" />
       </div>
     );
   }

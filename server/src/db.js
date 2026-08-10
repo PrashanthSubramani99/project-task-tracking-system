@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
-const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, 'teamtrack.db');
+const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, 'infytrack.db');
 
 fs.mkdirSync(path.dirname(DB_FILE), { recursive: true });
 

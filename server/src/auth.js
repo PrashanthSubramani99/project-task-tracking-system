@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { db } from './db.js';
 
-const SECRET = process.env.JWT_SECRET || 'teamtrack-dev-secret-change-me';
+const SECRET = process.env.JWT_SECRET || 'infytrack-dev-secret-change-me';
 const TOKEN_TTL = process.env.TOKEN_TTL || '30d';
 
 export const hashPassword = (plain) => bcrypt.hashSync(plain, 10);

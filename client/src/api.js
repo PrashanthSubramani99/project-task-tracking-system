@@ -1,4 +1,4 @@
-const TOKEN_KEY = 'teamtrack.token';
+const TOKEN_KEY = 'infytrack.token';
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY);
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token);
@@ -29,7 +29,7 @@ async function request(method, path, body, options = {}) {
     clearToken();
     // Let the app fall back to the sign-in screen rather than showing
     // half-loaded pages against an expired session.
-    if (!path.startsWith('/auth/')) window.dispatchEvent(new CustomEvent('teamtrack:signed-out'));
+    if (!path.startsWith('/auth/')) window.dispatchEvent(new CustomEvent('infytrack:signed-out'));
   }
 
   if (options.raw) {
