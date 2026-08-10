@@ -17,7 +17,13 @@ Discussion  →  Action items  →  Tasks  →  Board / Reports
 
 ## Running it
 
-Requires Node 20 or newer. Nothing else — the database is a file.
+Requires **Node 22 or 24**. Nothing else — the database is a file, and no
+compiler is needed: `better-sqlite3` ships prebuilt binaries for those two
+versions on Windows, macOS and Linux.
+
+Node 20 is not supported. It works, but no prebuilt binary exists for it, so
+installing would try to compile SQLite from source and fail unless you have a
+full C++ toolchain.
 
 ```bash
 npm run setup     # installs server and client dependencies
@@ -224,6 +230,42 @@ All endpoints live under `/api` and need `Authorization: Bearer <token>` except
 writes nothing, which is what lets the capture screen preview them.
 
 ---
+
+## If the install fails
+
+Almost every install problem is the same one: `better-sqlite3` is a native
+module, and if npm cannot find a prebuilt binary for your exact Node version
+and platform, it falls back to compiling from source with `node-gyp`. On
+Windows that needs Visual Studio with the "Desktop development with C++"
+workload, which most people do not have.
+
+You will recognise it by these lines:
+
+```
+prebuild-install warn install No prebuilt binaries found (target=... platform=win32)
+gyp ERR! find VS  You need to install the latest version of Visual Studio
+```
+
+**The fix is a supported Node version, not a compiler.** Check with `node -v`
+and switch to Node 22 or 24:
+
+```bash
+nvm install 22 && nvm use 22        # nvm-windows: nvm install 22 && nvm use 22
+```
+
+Then clear the half-finished install and try again:
+
+```bash
+rm -rf server/node_modules server/package-lock.json    # Windows: rmdir /s /q server\node_modules
+npm run setup
+```
+
+On Windows, if `npm` reports `EPERM: operation not permitted, rmdir`, something
+is holding those files — close any editor, terminal or antivirus scan pointed
+at the folder, then delete `server\node_modules` and retry.
+
+Installing a C++ toolchain also works, but it is a much bigger detour than
+changing Node version.
 
 ## Notes and limits
 
