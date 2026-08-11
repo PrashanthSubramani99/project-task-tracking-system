@@ -62,6 +62,66 @@ Useful environment variables:
 
 Other commands: `npm test` (30 tests), `npm run reset` (wipe and re-seed).
 
+### Deploying to a VPS
+
+Ready-to-use config lives in [`deploy/`](deploy/): a systemd unit, an Nginx
+reverse-proxy site, an env file template, and a SQLite backup script. The
+database is a single file, so the one thing that matters is putting it on a
+**persistent disk** — not an ephemeral container filesystem that resets on
+redeploy.
+
+1. **Provision a box** (Ubuntu 22.04+ is the easy path) and install Node 22:
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+   sudo apt-get install -y nodejs nginx sqlite3 certbot python3-certbot-nginx
+   ```
+2. **Create a dedicated user and app directory**, then clone and build:
+   ```bash
+   sudo useradd --system --create-home --shell /usr/sbin/nologin infytrack
+   sudo git clone <your-repo-url> /opt/infytrack
+   sudo chown -R infytrack:infytrack /opt/infytrack
+   sudo -u infytrack bash -c 'cd /opt/infytrack && npm run setup && npm run build'
+   ```
+3. **Set secrets** — copy the template and fill in a real `JWT_SECRET`
+   (`openssl rand -hex 32`):
+   ```bash
+   sudo -u infytrack cp deploy/env.example /opt/infytrack/.env
+   sudo -u infytrack chmod 600 /opt/infytrack/.env
+   sudo -u infytrack $EDITOR /opt/infytrack/.env
+   ```
+4. **Run it as a service:**
+   ```bash
+   sudo cp /opt/infytrack/deploy/infytrack.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now infytrack
+   curl -s http://127.0.0.1:4000/api/health   # should return {"ok":true,...}
+   ```
+5. **Put Nginx + TLS in front of it:**
+   ```bash
+   sudo cp /opt/infytrack/deploy/nginx.conf /etc/nginx/sites-available/infytrack
+   sudo sed -i 's/yourdomain.example/YOUR-DOMAIN/' /etc/nginx/sites-available/infytrack
+   sudo ln -s /etc/nginx/sites-available/infytrack /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   sudo certbot --nginx -d YOUR-DOMAIN     # gets a cert and rewrites the config for HTTPS
+   ```
+6. **Lock down the firewall** so only Nginx is reachable from outside:
+   ```bash
+   sudo ufw allow OpenSSH
+   sudo ufw allow 'Nginx Full'
+   sudo ufw enable
+   ```
+7. **Schedule backups** — `deploy/backup.sh` snapshots the live database
+   safely (via SQLite's own backup command, not a raw file copy) and prunes
+   anything older than 14 days:
+   ```bash
+   sudo -u infytrack crontab -e
+   # add: 0 3 * * * /opt/infytrack/deploy/backup.sh
+   ```
+
+Visit `https://YOUR-DOMAIN` — the first load shows the setup screen to create
+your administrator account. To ship an update later: `git pull`, `npm run
+setup`, `npm run build`, `sudo systemctl restart infytrack`.
+
 ---
 
 ## What it does

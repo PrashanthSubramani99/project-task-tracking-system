@@ -1,0 +1,37 @@
+## systemd unit for InfyTrack.
+##
+## Install:
+##   sudo cp deploy/infytrack.service /etc/systemd/system/infytrack.service
+##   sudo systemctl daemon-reload
+##   sudo systemctl enable --now infytrack
+##
+## Logs:
+##   journalctl -u infytrack -f
+##
+## Assumes the app lives at /opt/infytrack, runs as a dedicated non-root
+## user "infytrack", and secrets live in /opt/infytrack/.env (see
+## deploy/env.example — never commit that file, only this template).
+
+[Unit]
+Description=InfyTrack task tracker
+After=network.target
+
+[Service]
+Type=simple
+User=infytrack
+Group=infytrack
+WorkingDirectory=/opt/infytrack/server
+EnvironmentFile=/opt/infytrack/.env
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=5
+
+# Modest hardening — the process only needs its own working directory,
+# the data directory it's told about, and outbound network.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/infytrack/server/data
+
+[Install]
+WantedBy=multi-user.target
