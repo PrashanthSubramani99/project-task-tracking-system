@@ -13,7 +13,7 @@ export function signToken(user) {
 }
 
 export const PUBLIC_USER_COLS =
-  'id, name, email, role, title, phone, avatar_color, is_active, journey, notify_prefs, last_seen_at, created_at';
+  'id, name, email, role, title, phone, avatar_color, is_active, journey, notify_prefs, theme_prefs, last_seen_at, created_at';
 
 export function findUserById(id) {
   return db.prepare(`SELECT ${PUBLIC_USER_COLS} FROM users WHERE id = ?`).get(id);

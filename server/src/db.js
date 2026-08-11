@@ -17,6 +17,15 @@ db.pragma('foreign_keys = ON');
 export function initSchema() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   db.exec(sql);
+  migrate();
+}
+
+/** Additive, idempotent column migrations for databases created before a schema change. */
+function migrate() {
+  const columns = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+  if (!columns.includes('theme_prefs')) {
+    db.exec("ALTER TABLE users ADD COLUMN theme_prefs TEXT NOT NULL DEFAULT '{}'");
+  }
 }
 
 /** Run fn inside a transaction. */

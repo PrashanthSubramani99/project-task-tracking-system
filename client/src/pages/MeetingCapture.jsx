@@ -85,7 +85,7 @@ function ActionRow({ item, people, onChange, onRemove }) {
 }
 
 export default function MeetingCapture() {
-  const { projects, people, toast, completeJourneyStep, loadWorkspace } = useApp();
+  const { projects, people, toast, completeJourneyStep, loadWorkspace, orgSettings } = useApp();
   const navigate = useNavigate();
 
   const writable = projects.filter((p) => p.my_role !== 'viewer' && p.status !== 'archived');
@@ -193,7 +193,7 @@ export default function MeetingCapture() {
           <h1>Log a discussion</h1>
           <div className="sub">
             Paste the raw notes exactly as they were written — a WhatsApp export works as-is.
-            InfyTrack pulls out the commitments so none of them get lost.
+            {orgSettings.app_name} pulls out the commitments so none of them get lost.
           </div>
         </div>
         <button className="btn" onClick={() => navigate('/meetings')} disabled={saving}>Cancel</button>

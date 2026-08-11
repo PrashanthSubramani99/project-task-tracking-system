@@ -15,8 +15,11 @@ const NOTIFY_OPTIONS = [
   { key: 'action_item', label: 'Action items', hint: 'When notes are shared or an item is put on you.' },
 ];
 
+const MAX_IMAGE_BYTES = 800 * 1024; // keeps the stored data URL modest
+
 export default function Settings() {
-  const { user, setUser, theme, setTheme, toast, projects } = useApp();
+  const { user, setUser, theme, setTheme, toast, projects, orgSettings, updateOrgSettings } = useApp();
+  const isAdmin = user.role === 'admin';
 
   const [tab, setTab] = useState('profile');
   const [profile, setProfile] = useState({
@@ -28,6 +31,49 @@ export default function Settings() {
     ...(user.notify_prefs || {}),
   });
   const [busy, setBusy] = useState(false);
+  const [appName, setAppName] = useState(orgSettings.app_name);
+  const [brandingBusy, setBrandingBusy] = useState(false);
+
+  const saveAppName = async () => {
+    const trimmed = appName.trim();
+    if (!trimmed) return toast('Application name cannot be empty.', 'error');
+    setBrandingBusy(true);
+    try {
+      await updateOrgSettings({ app_name: trimmed });
+      toast('Application name saved.', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setBrandingBusy(false);
+    }
+  };
+
+  const pickImage = (field) => (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return toast('Please choose an image file.', 'error');
+    if (file.size > MAX_IMAGE_BYTES) return toast('That image is too large — please use one under 800KB.', 'error');
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        await updateOrgSettings({ [field]: reader.result });
+        toast(`${field === 'logo' ? 'Logo' : 'Favicon'} updated.`, 'success');
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = (field) => async () => {
+    try {
+      await updateOrgSettings({ [field]: null });
+      toast(`${field === 'logo' ? 'Logo' : 'Favicon'} reset to default.`, 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+  };
 
   const saveProfile = async () => {
     setBusy(true);
@@ -87,6 +133,7 @@ export default function Settings() {
           { value: 'notifications', label: 'Notifications', icon: 'bell' },
           { value: 'access', label: 'My access', icon: 'shield' },
           { value: 'appearance', label: 'Appearance', icon: 'sun' },
+          ...(isAdmin ? [{ value: 'branding', label: 'Branding', icon: 'flag' }] : []),
         ]}
       />
 
@@ -237,14 +284,90 @@ export default function Settings() {
           <div className="switch-row">
             <div>
               <div className="strong small">Dark mode</div>
-              <div className="tiny muted">Saved on this device.</div>
+              <div className="tiny muted">Saved to your account — follows you to any device you sign in on.</div>
             </div>
             <button className="btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
               <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={14} />
               {theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
             </button>
           </div>
+          <div className="switch-row">
+            <div>
+              <div className="strong small">Full Theme Customizer</div>
+              <div className="tiny muted">Sidebar color, topbar color, layout width and sidebar size.</div>
+            </div>
+            <button className="btn" onClick={() => window.dispatchEvent(new Event('infytrack:open-customizer'))}>
+              <Icon name="sliders" size={14} />
+              Open customizer
+            </button>
+          </div>
         </Card>
+      )}
+
+      {tab === 'branding' && isAdmin && (
+        <div className="col" style={{ gap: 14 }}>
+          <Callout icon="shield">
+            Only administrators can change these. They apply workspace-wide, for every signed-in user and on the
+            sign-in screen itself.
+          </Callout>
+
+          <Card title="Application name" subtitle="Shown in the sidebar, the sign-in screen and the browser tab.">
+            <div className="row" style={{ gap: 10 }}>
+              <input className="input grow" value={appName} onChange={(e) => setAppName(e.target.value)} maxLength={40} />
+              <button className="btn primary" onClick={saveAppName} disabled={brandingBusy || !appName.trim() || appName.trim() === orgSettings.app_name}>
+                {brandingBusy ? <Spinner /> : 'Save'}
+              </button>
+            </div>
+          </Card>
+
+          <Card title="Logo" subtitle="Replaces the mark in the sidebar and sign-in screen. Square image, under 800KB.">
+            <div className="row" style={{ gap: 16 }}>
+              {orgSettings.logo ? (
+                <img
+                  src={orgSettings.logo} alt=""
+                  style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'contain', border: '1px solid var(--border)' }}
+                />
+              ) : (
+                <span className="brand-mark" style={{ width: 48, height: 48, borderRadius: 12 }}>
+                  <Icon name="infinity" size={26} strokeWidth={2.4} />
+                </span>
+              )}
+              <div className="row" style={{ gap: 8 }}>
+                <label className="btn sm">
+                  <Icon name="download" size={13} style={{ transform: 'rotate(180deg)' }} />
+                  Upload
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickImage('logo')} />
+                </label>
+                {orgSettings.logo && (
+                  <button className="btn sm" onClick={clearImage('logo')}>Reset to default</button>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Favicon" subtitle="Shown in the browser tab. Square image works best, under 800KB.">
+            <div className="row" style={{ gap: 16 }}>
+              {orgSettings.favicon ? (
+                <img
+                  src={orgSettings.favicon} alt=""
+                  style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', border: '1px solid var(--border)' }}
+                />
+              ) : (
+                <span className="small muted">Using the default favicon.</span>
+              )}
+              <div className="row" style={{ gap: 8 }}>
+                <label className="btn sm">
+                  <Icon name="download" size={13} style={{ transform: 'rotate(180deg)' }} />
+                  Upload
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={pickImage('favicon')} />
+                </label>
+                {orgSettings.favicon && (
+                  <button className="btn sm" onClick={clearImage('favicon')}>Reset to default</button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
       )}
     </div>
   );

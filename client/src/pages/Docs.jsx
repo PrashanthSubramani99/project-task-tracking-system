@@ -6,7 +6,7 @@ import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import {
   Badge, Callout, Card, ConfirmDialog, DOC_CATEGORY_META, EmptyState, Field, Loading,
-  Markdown, Modal, SearchInput, Spinner, relativeTime,
+  Markdown, Modal, Pagination, SearchInput, Spinner, relativeTime,
 } from '../components/ui.jsx';
 
 const TEMPLATES = {
@@ -196,6 +196,9 @@ export default function Docs() {
   const [category, setCategory] = useState('');
   const [query, setQuery] = useState('');
   const debounced = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debounced, projectId, category]);
   const [selectedId, setSelectedId] = useState(id ? Number(id) : null);
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -205,10 +208,25 @@ export default function Docs() {
     project_id: projectId || undefined,
     category: category || undefined,
     q: debounced || undefined,
+    page,
+    limit,
   });
 
   const docs = data?.docs || [];
-  const selected = docs.find((doc) => doc.id === selectedId) || null;
+  const total = data?.total ?? docs.length;
+
+  // Deep-linked doc (e.g. from the Activity Log) may not be on the current
+  // page of the list — fetch it directly so opening the link never shows a
+  // blank pane just because pagination pushed it off page 1.
+  const [directDoc, setDirectDoc] = useState(null);
+  useEffect(() => {
+    if (!selectedId || docs.some((d) => d.id === selectedId)) { setDirectDoc(null); return undefined; }
+    let cancelled = false;
+    api.get(`/docs/${selectedId}`).then((r) => { if (!cancelled) setDirectDoc(r.doc); }).catch(() => { if (!cancelled) setDirectDoc(null); });
+    return () => { cancelled = true; };
+  }, [selectedId, docs]);
+
+  const selected = docs.find((doc) => doc.id === selectedId) || directDoc || null;
 
   useEffect(() => {
     if (!selectedId && docs.length) setSelectedId(docs[0].id);
@@ -251,7 +269,7 @@ export default function Docs() {
           ))}
         </select>
         <span className="spacer" />
-        <span className="small muted">{docs.length} document{docs.length === 1 ? '' : 's'}</span>
+        <span className="small muted">{total} document{total === 1 ? '' : 's'}</span>
       </div>
 
       {loading ? (
@@ -293,6 +311,7 @@ export default function Docs() {
                 </div>
               ))}
             </div>
+            <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
           </Card>
 
           <div>

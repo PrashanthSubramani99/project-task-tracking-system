@@ -4,7 +4,30 @@ import { api, setToken, clearToken, getToken } from './api.js';
 const AppContext = createContext(null);
 export const useApp = () => useContext(AppContext);
 
-const THEME_KEY = 'infytrack.theme';
+const THEME_KEY = 'infytrack.theme_prefs';
+
+// Theme Customizer defaults. `mode` drives the light/dark color scheme;
+// the rest are independent layout/color knobs a user can mix freely,
+// same idea as the reference product's customizer panel.
+export const DEFAULT_THEME_PREFS = {
+  mode: 'light',           // light | dark
+  sidebarColor: 'light',   // light | dark | gradient
+  topbarColor: 'light',    // light | dark
+  layoutWidth: 'fluid',    // fluid | boxed
+  sidebarSize: 'default',  // default | compact | icon
+  sidebarCollapsed: false, // toggled from the hamburger icon, independent of sidebarSize
+};
+
+function loadStoredThemePrefs() {
+  try {
+    const raw = localStorage.getItem(THEME_KEY);
+    return raw ? { ...DEFAULT_THEME_PREFS, ...JSON.parse(raw) } : { ...DEFAULT_THEME_PREFS };
+  } catch {
+    return { ...DEFAULT_THEME_PREFS };
+  }
+}
+
+export const DEFAULT_ORG_SETTINGS = { app_name: 'InfyTrack', logo: null, favicon: null };
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -16,9 +39,11 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || 'light');
+  const [themePrefs, setThemePrefsState] = useState(loadStoredThemePrefs);
+  const [orgSettings, setOrgSettings] = useState(DEFAULT_ORG_SETTINGS);
 
   const toastId = useRef(0);
+  const defaultFavicon = useRef(null);
 
   const toast = useCallback((message, tone = 'info') => {
     const id = ++toastId.current;
@@ -29,9 +54,83 @@ export function AppProvider({ children }) {
   const dismissToast = useCallback((id) => setToasts((list) => list.filter((t) => t.id !== id)), []);
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
+    const root = document.documentElement;
+    root.setAttribute('data-theme', themePrefs.mode);
+    root.setAttribute('data-sidebar', themePrefs.sidebarColor);
+    root.setAttribute('data-topbar', themePrefs.topbarColor);
+    root.setAttribute('data-layout-width', themePrefs.layoutWidth);
+    root.setAttribute('data-sidebar-size', themePrefs.sidebarSize);
+    root.setAttribute('data-sidebar-collapsed', String(themePrefs.sidebarCollapsed));
+    localStorage.setItem(THEME_KEY, JSON.stringify(themePrefs));
+  }, [themePrefs]);
+
+  /**
+   * Update one or more Theme Customizer knobs. Applied instantly (so there's
+   * no flicker) and, once signed in, saved to the account so the choice
+   * follows the user to their next device/browser rather than living only
+   * in this browser's localStorage.
+   */
+  const setThemePrefs = useCallback((partial) => {
+    setThemePrefsState((current) => {
+      const next = { ...current, ...partial };
+      if (getToken()) {
+        api.patch('/auth/me', { theme_prefs: next }).catch(() => {});
+      }
+      return next;
+    });
+  }, []);
+
+  const resetThemePrefs = useCallback(() => setThemePrefs({ ...DEFAULT_THEME_PREFS }), [setThemePrefs]);
+
+  const toggleSidebar = useCallback(
+    () => setThemePrefs({ sidebarCollapsed: !themePrefs.sidebarCollapsed }),
+    [setThemePrefs, themePrefs.sidebarCollapsed],
+  );
+
+  // Workspace branding (app name, logo, favicon) — public, so it's loaded
+  // once up front and applied even on the sign-in screen, before anyone is
+  // authenticated. Only an admin can change it (server-enforced).
+  const refreshOrgSettings = useCallback(async () => {
+    try {
+      const settings = await api.get('/org-settings');
+      setOrgSettings({ ...DEFAULT_ORG_SETTINGS, ...settings });
+    } catch {
+      /* keep the built-in defaults if the server isn't reachable yet */
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshOrgSettings();
+  }, [refreshOrgSettings]);
+
+  useEffect(() => {
+    document.title = orgSettings.app_name;
+    let link = document.querySelector('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    if (defaultFavicon.current === null) defaultFavicon.current = link.href;
+    link.href = orgSettings.favicon || defaultFavicon.current;
+  }, [orgSettings]);
+
+  const updateOrgSettings = useCallback(async (partial) => {
+    const settings = await api.patch('/org-settings', partial);
+    setOrgSettings({ ...DEFAULT_ORG_SETTINGS, ...settings });
+    return settings;
+  }, []);
+
+  // Back-compat alias: the old single light/dark toggle is now themePrefs.mode.
+  const theme = themePrefs.mode;
+  const setTheme = useCallback((mode) => setThemePrefs({ mode }), [setThemePrefs]);
+
+  /** Pull the signed-in user's saved theme onto this device/browser. */
+  const applyUserThemePrefs = useCallback((prefs) => {
+    if (prefs && Object.keys(prefs).length) {
+      setThemePrefsState((current) => ({ ...current, ...prefs }));
+    }
+  }, []);
 
   /** Reference data every screen needs: projects the user can see, and people. */
   const loadWorkspace = useCallback(async () => {
@@ -74,6 +173,7 @@ export function AppProvider({ children }) {
       const me = await api.get('/auth/me');
       setUser(me.user);
       setCapabilities(me.capabilities || []);
+      applyUserThemePrefs(me.user.theme_prefs);
       await Promise.all([loadWorkspace(), refreshNotifications()]);
     } catch {
       clearToken();
@@ -87,7 +187,7 @@ export function AppProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [loadWorkspace, refreshNotifications]);
+  }, [loadWorkspace, refreshNotifications, applyUserThemePrefs]);
 
   useEffect(() => {
     bootstrap();
@@ -113,10 +213,11 @@ export function AppProvider({ children }) {
       setUser(data.user);
       const me = await api.get('/auth/me');
       setCapabilities(me.capabilities || []);
+      applyUserThemePrefs(me.user.theme_prefs);
       await Promise.all([loadWorkspace(), refreshNotifications()]);
       return data.user;
     },
-    [loadWorkspace, refreshNotifications],
+    [loadWorkspace, refreshNotifications, applyUserThemePrefs],
   );
 
   const runSetup = useCallback(
@@ -127,10 +228,11 @@ export function AppProvider({ children }) {
       setNeedsSetup(false);
       const me = await api.get('/auth/me');
       setCapabilities(me.capabilities || []);
+      applyUserThemePrefs(me.user.theme_prefs);
       await loadWorkspace();
       return data.user;
     },
-    [loadWorkspace],
+    [loadWorkspace, applyUserThemePrefs],
   );
 
   const completeJourneyStep = useCallback(
@@ -191,12 +293,14 @@ export function AppProvider({ children }) {
       loading, needsSetup,
       signIn, signOut, runSetup, completeJourneyStep,
       toast, toasts, dismissToast,
-      theme, setTheme,
+      theme, setTheme, themePrefs, setThemePrefs, resetThemePrefs, toggleSidebar,
+      orgSettings, updateOrgSettings,
     }),
     [
       user, capabilities, can, canWriteSomewhere, projects, people, loadWorkspace,
       notifications, unread, refreshNotifications, loading, needsSetup, signIn, signOut,
-      runSetup, completeJourneyStep, toast, toasts, dismissToast, theme,
+      runSetup, completeJourneyStep, toast, toasts, dismissToast, theme, setTheme,
+      themePrefs, setThemePrefs, resetThemePrefs, toggleSidebar, orgSettings, updateOrgSettings,
     ],
   );
 

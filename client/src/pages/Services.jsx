@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useApp } from '../store.jsx';
 import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import {
   Avatar, Badge, Callout, Card, ConfirmDialog, EmptyState, Field, Loading, Modal,
-  SearchInput, Segmented, Spinner,
+  Pagination, SearchInput, Segmented, Spinner,
 } from '../components/ui.jsx';
 
 const ENVIRONMENTS = [
@@ -152,6 +152,9 @@ export default function Services() {
   const [environment, setEnvironment] = useState('');
   const [query, setQuery] = useState('');
   const debounced = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debounced, projectId, environment]);
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -160,10 +163,13 @@ export default function Services() {
     project_id: projectId || undefined,
     environment: environment || undefined,
     q: debounced || undefined,
+    page,
+    limit,
   });
 
   const services = data?.services || [];
   const conflicts = data?.conflicts || [];
+  const total = data?.total ?? services.length;
   const canWrite = projects.some((p) => p.my_role && p.my_role !== 'viewer');
 
   const grouped = ENVIRONMENTS.map((env) => ({
@@ -215,7 +221,7 @@ export default function Services() {
           options={[{ value: '', label: 'All' }, ...ENVIRONMENTS.map((env) => ({ value: env.value, label: env.label }))]}
         />
         <span className="spacer" />
-        <span className="small muted">{services.length} registered</span>
+        <span className="small muted">{total} registered</span>
       </div>
 
       {loading ? (
@@ -311,6 +317,9 @@ export default function Services() {
               </div>
             </Card>
           ))}
+          <Card bodyClass="tight">
+            <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
+          </Card>
         </div>
       )}
 

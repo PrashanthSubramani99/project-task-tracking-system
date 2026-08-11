@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
   -- onboarding / user-journey progress, JSON object of completed step keys
   journey        TEXT    NOT NULL DEFAULT '{}',
   notify_prefs   TEXT    NOT NULL DEFAULT '{"assigned":true,"mentioned":true,"comment":true,"status":true,"due":true,"action_item":true}',
+  -- per-user Theme Customizer choices (color scheme, sidebar/topbar color, layout), JSON object
+  theme_prefs    TEXT    NOT NULL DEFAULT '{}',
   last_seen_at   TEXT,
   created_at     TEXT    NOT NULL DEFAULT (datetime('now')),
   updated_at     TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -245,3 +247,17 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read_at, id DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_notif_dedupe ON notifications(user_id, dedupe_key)
   WHERE dedupe_key IS NOT NULL;
+
+-- ---------------------------------------------------------- org settings ---
+-- Single-row table for workspace branding: app name, logo, favicon.
+-- Admin-only to edit (see routes/org.js); readable by anyone, signed in or
+-- not, since the sign-in screen itself needs to show the right branding.
+
+CREATE TABLE IF NOT EXISTS org_settings (
+  id         INTEGER PRIMARY KEY CHECK (id = 1),
+  app_name   TEXT    NOT NULL DEFAULT 'InfyTrack',
+  logo       TEXT,                       -- data URL; NULL falls back to the built-in mark
+  favicon    TEXT,                       -- data URL; NULL falls back to the built-in favicon
+  updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+INSERT OR IGNORE INTO org_settings (id) VALUES (1);

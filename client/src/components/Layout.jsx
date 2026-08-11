@@ -4,6 +4,7 @@ import { useApp } from '../store.jsx';
 import { api } from '../api.js';
 import { Icon } from './icons.jsx';
 import { Avatar, Menu, MenuItem, relativeTime, EmptyState } from './ui.jsx';
+import ThemeCustomizer from './ThemeCustomizer.jsx';
 
 const NAV = [
   {
@@ -125,13 +126,20 @@ function NotificationPanel({ onClose }) {
 }
 
 export default function Layout({ children }) {
-  const { user, unread, signOut, theme, setTheme, projects, canWriteSomewhere } = useApp();
+  const { user, unread, signOut, theme, setTheme, projects, canWriteSomewhere, themePrefs, toggleSidebar, orgSettings } = useApp();
   const [panelOpen, setPanelOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [customizerOpen, setCustomizerOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => setNavOpen(false), [location.pathname]);
+
+  useEffect(() => {
+    const onOpenCustomizer = () => setCustomizerOpen(true);
+    window.addEventListener('infytrack:open-customizer', onOpenCustomizer);
+    return () => window.removeEventListener('infytrack:open-customizer', onOpenCustomizer);
+  }, []);
 
   const counts = {
     openActions: projects.reduce((sum, p) => sum + (p.stats?.open_action_items || 0), 0),
@@ -141,10 +149,14 @@ export default function Layout({ children }) {
     <div className="app">
       <nav className={`sidebar ${navOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
-          <span className="brand-mark">
-            <Icon name="infinity" size={16} strokeWidth={2.4} />
-          </span>
-          InfyTrack
+          {orgSettings.logo ? (
+            <img className="brand-mark brand-logo-img" src={orgSettings.logo} alt="" />
+          ) : (
+            <span className="brand-mark">
+              <Icon name="infinity" size={16} strokeWidth={2.4} />
+            </span>
+          )}
+          <span className="brand-text truncate">{orgSettings.app_name}</span>
         </div>
 
         <div className="sidebar-scroll">
@@ -154,9 +166,9 @@ export default function Layout({ children }) {
               {group.items.map((item) => {
                 const count = item.countKey ? counts[item.countKey] : null;
                 return (
-                  <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                  <NavLink key={item.to} to={item.to} title={item.label} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Icon name={item.icon} size={16} />
-                    {item.label}
+                    <span className="nav-item-label">{item.label}</span>
                     {count > 0 && <span className="count alert">{count}</span>}
                   </NavLink>
                 );
@@ -165,36 +177,18 @@ export default function Layout({ children }) {
           ))}
         </div>
 
-        <div className="sidebar-footer">
-          <Menu
-            align="left"
-            trigger={
-              <button className="nav-item" style={{ width: '100%' }}>
-                <Avatar user={user} size={24} />
-                <span className="grow truncate" style={{ textAlign: 'left' }}>{user?.name}</span>
-                <Icon name="chevronDown" size={14} />
-              </button>
-            }
-          >
-            <MenuItem icon="user" onClick={() => navigate('/settings')}>
-              My profile
-            </MenuItem>
-            <MenuItem icon={theme === 'dark' ? 'sun' : 'moon'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            </MenuItem>
-            <div className="menu-sep" />
-            <MenuItem icon="logout" danger onClick={signOut}>
-              Sign out
-            </MenuItem>
-          </Menu>
-        </div>
       </nav>
 
       {navOpen && <div className="scrim mobile-only" style={{ zIndex: 39 }} onClick={() => setNavOpen(false)} />}
 
       <div className="main">
         <header className="topbar">
-          <button className="icon-btn mobile-only" onClick={() => setNavOpen(true)} aria-label="Open menu">
+          <button
+            className="icon-btn"
+            onClick={() => (window.innerWidth <= 760 ? setNavOpen(true) : toggleSidebar())}
+            aria-label={themePrefs.sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+            title={themePrefs.sidebarCollapsed ? 'Expand menu' : 'Collapse menu'}
+          >
             <Icon name="menu" size={18} />
           </button>
 
@@ -218,16 +212,43 @@ export default function Layout({ children }) {
 
           <div className="spacer" />
 
+          <button className="icon-btn" onClick={() => setCustomizerOpen(true)} aria-label="Theme Customizer">
+            <Icon name="sliders" size={16} />
+          </button>
+
           <button className="icon-btn" onClick={() => setPanelOpen(true)} aria-label="Notifications">
             <Icon name="bell" size={17} />
             {unread > 0 && <span className="notif-dot">{unread > 9 ? '9+' : unread}</span>}
           </button>
+
+          <Menu
+            align="right"
+            trigger={
+              <button className="profile-trigger" aria-label="Account menu">
+                <Avatar user={user} size={26} />
+                <span className="profile-name hide-sm truncate">{user?.name}</span>
+                <Icon name="chevronDown" size={14} />
+              </button>
+            }
+          >
+            <MenuItem icon="user" onClick={() => navigate('/settings')}>
+              My profile
+            </MenuItem>
+            <MenuItem icon={theme === 'dark' ? 'sun' : 'moon'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </MenuItem>
+            <div className="menu-sep" />
+            <MenuItem icon="logout" danger onClick={signOut}>
+              Sign out
+            </MenuItem>
+          </Menu>
         </header>
 
         {children}
       </div>
 
       {panelOpen && <NotificationPanel onClose={() => setPanelOpen(false)} />}
+      <ThemeCustomizer open={customizerOpen} onClose={() => setCustomizerOpen(false)} />
     </div>
   );
 }

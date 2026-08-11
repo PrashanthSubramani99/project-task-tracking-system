@@ -9,6 +9,7 @@ import { authenticate } from './auth.js';
 import { startScheduler, runDeadlineSweep } from './scheduler.js';
 
 import authRoutes from './routes/auth.js';
+import orgRoutes from './routes/org.js';
 import userRoutes from './routes/users.js';
 import projectRoutes from './routes/projects.js';
 import taskRoutes from './routes/tasks.js';
@@ -34,6 +35,9 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+// Not gated by the global `authenticate` below: GET is public (the sign-in
+// screen needs branding before anyone is signed in), PATCH gates itself.
+app.use('/api/org-settings', orgRoutes);
 
 // Everything past this point needs a signed-in user.
 app.use('/api/users', authenticate, userRoutes);

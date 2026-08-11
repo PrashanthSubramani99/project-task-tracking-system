@@ -11,7 +11,7 @@ const DEMO_ACCOUNTS = [
 ];
 
 function Setup() {
-  const { runSetup, toast } = useApp();
+  const { runSetup, toast, orgSettings } = useApp();
   const [form, setForm] = useState({ name: '', email: '', password: '', workspace: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -36,10 +36,14 @@ function Setup() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
-            <Icon name="infinity" size={20} strokeWidth={2.4} />
-          </span>
-          InfyTrack
+          {orgSettings.logo ? (
+            <img className="brand-mark brand-logo-img" style={{ width: 32, height: 32, borderRadius: 10 }} src={orgSettings.logo} alt="" />
+          ) : (
+            <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
+              <Icon name="infinity" size={20} strokeWidth={2.4} />
+            </span>
+          )}
+          {orgSettings.app_name}
         </div>
 
         <form className="card" onSubmit={submit}>
@@ -78,7 +82,7 @@ function Setup() {
 }
 
 export default function Auth() {
-  const { needsSetup, signIn, toast } = useApp();
+  const { needsSetup, signIn, toast, orgSettings } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -111,10 +115,14 @@ export default function Auth() {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">
-          <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
-            <Icon name="infinity" size={20} strokeWidth={2.4} />
-          </span>
-          InfyTrack
+          {orgSettings.logo ? (
+            <img className="brand-mark brand-logo-img" style={{ width: 32, height: 32, borderRadius: 10 }} src={orgSettings.logo} alt="" />
+          ) : (
+            <span className="brand-mark" style={{ width: 32, height: 32, borderRadius: 10 }}>
+              <Icon name="infinity" size={20} strokeWidth={2.4} />
+            </span>
+          )}
+          {orgSettings.app_name}
         </div>
 
         <form className="card" onSubmit={submit}>

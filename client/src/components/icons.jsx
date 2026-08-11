@@ -25,6 +25,8 @@ const PATHS = {
   chevronRight: 'M9 18l6-6-6-6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronLeft: 'M15 18l-6-6 6-6',
+  chevronsLeft: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
+  chevronsRight: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   search: 'M11 19a8 8 0 100-16 8 8 0 000 16zM21 21l-4.35-4.35',
   filter: 'M22 3H2l8 9.5V19l4 2v-8.5L22 3z',
   edit: 'M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4 9.5-9.5z',
@@ -54,6 +56,7 @@ const PATHS = {
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
   arrowRight: 'M5 12h14M12 5l7 7-7 7',
   pin: 'M12 17v5M9 10.8V4h6v6.8l2 3.2H7l2-3.2z',
+  sliders: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
   // The brand mark: a lemniscate drawn as one continuous stroke, so the two
   // lobes meet cleanly at the centre crossing. The lobes are deliberately wide
   // and the mark is drawn at a heavier stroke than the UI icons, because a

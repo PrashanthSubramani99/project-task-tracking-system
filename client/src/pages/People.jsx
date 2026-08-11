@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api.js';
 import { useApp } from '../store.jsx';
-import { useFetch } from '../hooks.js';
+import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import {
   Avatar, Badge, Callout, Card, ConfirmDialog, EmptyState, Field, Loading, Modal,
-  SearchInput, Spinner, relativeTime,
+  Pagination, SearchInput, Spinner, relativeTime,
 } from '../components/ui.jsx';
 
 const ORG_ROLES = [
@@ -150,21 +150,28 @@ function PersonModal({ person, onClose, onSaved }) {
 }
 
 export default function People() {
-  const { user, toast, loadWorkspace } = useApp();
-  const { data, loading, reload } = useFetch('/users', { include_inactive: 'true' });
+  const { user, people, toast, loadWorkspace } = useApp();
 
   const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debouncedQuery]);
+
+  const { data, loading, reload } = useFetch('/users', {
+    include_inactive: 'true',
+    q: debouncedQuery || undefined,
+    page,
+    limit,
+  });
+
   const [editing, setEditing] = useState(null);
   const [creating, setCreating] = useState(false);
   const [deactivating, setDeactivating] = useState(null);
 
   const canManage = ['admin', 'manager'].includes(user.role);
-  const users = (data?.users || []).filter(
-    (person) =>
-      !query ||
-      person.name.toLowerCase().includes(query.toLowerCase()) ||
-      person.email.toLowerCase().includes(query.toLowerCase()),
-  );
+  const users = data?.users || [];
+  const total = data?.total ?? users.length;
 
   return (
     <div className="page">
@@ -193,7 +200,7 @@ export default function People() {
       <div className="row wrap" style={{ marginBottom: 14, gap: 8 }}>
         <SearchInput value={query} onChange={setQuery} placeholder="Search by name or email…" style={{ width: 260 }} />
         <span className="spacer" />
-        <span className="small muted">{users.filter((u) => u.is_active).length} active</span>
+        <span className="small muted">{people.length} active</span>
       </div>
 
       <Card bodyClass="tight">
@@ -257,6 +264,9 @@ export default function People() {
             </table>
           </div>
         )}
+        {!loading && users.length > 0 && (
+          <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
+        )}
       </Card>
 
       <div className="grid c4" style={{ marginTop: 14 }}>
@@ -266,7 +276,7 @@ export default function People() {
               <Badge tone={role.tone} square>{role.label}</Badge>
               <span className="spacer" />
               <span className="tiny dim">
-                {(data?.users || []).filter((u) => u.role === role.value && u.is_active).length}
+                {people.filter((u) => u.role === role.value).length}
               </span>
             </div>
             <div className="tiny muted">{role.summary}</div>

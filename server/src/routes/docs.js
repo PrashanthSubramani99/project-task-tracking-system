@@ -2,6 +2,7 @@ import express from 'express';
 import { db, jsonCol } from '../db.js';
 import { logActivity, logChanges, activityFor } from '../activity.js';
 import { can, requireCap, visibleProjectIds } from '../permissions.js';
+import { parsePagination } from '../paginate.js';
 
 const router = express.Router();
 
@@ -25,7 +26,10 @@ const docProjectId = (req) => {
 
 router.get('/', (req, res) => {
   const ids = visibleProjectIds(req.user);
-  if (!ids.length) return res.json({ docs: [] });
+  if (!ids.length) {
+    const { page, limit } = parsePagination(req.query);
+    return res.json({ docs: [], total: 0, page, limit });
+  }
 
   const where = [`d.project_id IN (${ids.map(() => '?').join(',')})`];
   const params = [...ids];
@@ -43,10 +47,13 @@ router.get('/', (req, res) => {
     params.push(like, like, like);
   }
 
+  const { limit, offset, page } = parsePagination(req.query);
+  const clause = `WHERE ${where.join(' AND ')}`;
   const rows = db
-    .prepare(`${DOC_SELECT} WHERE ${where.join(' AND ')} ORDER BY d.pinned DESC, d.updated_at DESC`)
-    .all(...params);
-  res.json({ docs: rows.map(shape) });
+    .prepare(`${DOC_SELECT} ${clause} ORDER BY d.pinned DESC, d.updated_at DESC LIMIT ? OFFSET ?`)
+    .all(...params, limit, offset);
+  const { total } = db.prepare(`SELECT COUNT(*) AS total FROM docs d ${clause}`).get(...params);
+  res.json({ docs: rows.map(shape), total, page, limit });
 });
 
 router.get('/:id', (req, res) => {

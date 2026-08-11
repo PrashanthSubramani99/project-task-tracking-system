@@ -3,6 +3,7 @@ import { db, tx, jsonCol } from '../db.js';
 import { logActivity, logChanges, activityFor, fieldLabel } from '../activity.js';
 import { notify, notifyMany, taskAudience, addWatcher, resolveMentions } from '../notify.js';
 import { can, requireCap, visibleProjectIds } from '../permissions.js';
+import { parsePagination } from '../paginate.js';
 
 const router = express.Router();
 
@@ -52,7 +53,10 @@ const taskProjectId = (req) => {
 
 router.get('/', (req, res) => {
   const ids = visibleProjectIds(req.user);
-  if (!ids.length) return res.json({ tasks: [], total: 0 });
+  if (!ids.length) {
+    const { page, limit } = parsePagination(req.query);
+    return res.json({ tasks: [], total: 0, page, limit });
+  }
 
   const where = [`t.project_id IN (${ids.map(() => '?').join(',')})`];
   const params = [...ids];
@@ -117,14 +121,13 @@ router.get('/', (req, res) => {
   };
   const order = sortMap[req.query.sort] || sortMap.updated;
 
-  const limit = Math.min(Number(req.query.limit) || 200, 1000);
-  const offset = Number(req.query.offset) || 0;
+  const { limit, offset, page } = parsePagination(req.query);
 
   const clause = `WHERE ${where.join(' AND ')}`;
   const rows = db.prepare(`${TASK_SELECT} ${clause} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, limit, offset);
   const { total } = db.prepare(`SELECT COUNT(*) AS total FROM tasks t ${clause}`).get(...params);
 
-  res.json({ tasks: rows.map(shape), total });
+  res.json({ tasks: rows.map(shape), total, page, limit });
 });
 
 /** Board view: the same filtered set, already bucketed into columns. */

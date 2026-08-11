@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store.jsx';
 import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import {
-  Badge, Card, EmptyState, Loading, SOURCE_META, SearchInput, formatDate, relativeTime,
+  Badge, Card, EmptyState, Loading, Pagination, SOURCE_META, SearchInput, formatDate, relativeTime,
 } from '../components/ui.jsx';
 
 export default function Meetings() {
-  const { projects, canWriteSomewhere } = useApp();
+  const { projects, canWriteSomewhere, orgSettings } = useApp();
   const navigate = useNavigate();
 
   const [projectId, setProjectId] = useState('');
@@ -16,15 +16,21 @@ export default function Meetings() {
   const [openOnly, setOpenOnly] = useState(false);
   const [query, setQuery] = useState('');
   const debounced = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debounced, projectId, source, openOnly]);
 
   const { data, loading } = useFetch('/meetings', {
     project_id: projectId || undefined,
     source: source || undefined,
     has_open_actions: openOnly ? 'true' : undefined,
     q: debounced || undefined,
+    page,
+    limit,
   });
 
   const meetings = data?.meetings || [];
+  const total = data?.total ?? meetings.length;
 
   return (
     <div className="page">
@@ -66,7 +72,7 @@ export default function Meetings() {
         </label>
 
         <span className="spacer" />
-        <span className="small muted">{meetings.length} logged</span>
+        <span className="small muted">{total} logged</span>
       </div>
 
       {loading ? (
@@ -84,7 +90,7 @@ export default function Meetings() {
               )
             }
           >
-            After your next call, paste the notes here. InfyTrack will pull out the action items and make sure
+            After your next call, paste the notes here. {orgSettings.app_name} will pull out the action items and make sure
             each one has an owner and a date.
           </EmptyState>
         </div>
@@ -140,6 +146,12 @@ export default function Meetings() {
               </Card>
             );
           })}
+        </div>
+      )}
+
+      {!loading && meetings.length > 0 && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
         </div>
       )}
     </div>

@@ -383,6 +383,57 @@ export function SearchInput({ value, onChange, placeholder = 'Search…', style 
   );
 }
 
+export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, 250, 500];
+
+/**
+ * Server-side pagination bar: rows-per-page picker (up to 500) + prev/next.
+ * `total`/`page`/`limit` come straight from the API response driving the
+ * table — the page never slices data itself, only asks the server for a
+ * different page/limit.
+ */
+export function Pagination({ page, limit, total, onPageChange, onLimitChange, limitOptions = PAGE_SIZE_OPTIONS }) {
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const start = total === 0 ? 0 : (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+
+  return (
+    <div className="pagination">
+      <div className="small muted">
+        {total === 0 ? 'No results' : `Showing ${start}–${end} of ${total}`}
+      </div>
+      <div className="pagination-controls">
+        <label className="pagination-limit">
+          <span className="tiny muted">Rows per page</span>
+          <select className="input sm" value={limit} onChange={(e) => onLimitChange(Number(e.target.value))}>
+            {limitOptions.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
+        <div className="row" style={{ gap: 4 }}>
+          <button type="button" className="icon-btn sm" disabled={page <= 1} onClick={() => onPageChange(1)} aria-label="First page" title="First page">
+            <Icon name="chevronsLeft" size={14} />
+          </button>
+          <button type="button" className="btn sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            <Icon name="chevronLeft" size={13} />
+            Prev
+          </button>
+          <span className="small" style={{ padding: '0 4px', whiteSpace: 'nowrap' }}>
+            Page {page} of {totalPages}
+          </span>
+          <button type="button" className="btn sm" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+            Next
+            <Icon name="chevronRight" size={13} />
+          </button>
+          <button type="button" className="icon-btn sm" disabled={page >= totalPages} onClick={() => onPageChange(totalPages)} aria-label="Last page" title="Last page">
+            <Icon name="chevronsRight" size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Small horizontal bar chart used across the dashboard and reports. */
 export function BarChart({ data, max, formatValue = (v) => v }) {
   const ceiling = max ?? Math.max(1, ...data.map((d) => d.value));

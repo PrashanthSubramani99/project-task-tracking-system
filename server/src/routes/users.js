@@ -4,6 +4,7 @@ import { hashPassword, PUBLIC_USER_COLS, requireOrgRole } from '../auth.js';
 import { logActivity, logChanges } from '../activity.js';
 import { notify } from '../notify.js';
 import { ORG_ROLES } from '../permissions.js';
+import { parsePagination } from '../paginate.js';
 
 const router = express.Router();
 
@@ -11,17 +12,44 @@ const AVATAR_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#
 
 const shape = (u) => ({ ...u, journey: jsonCol(u.journey, {}), notify_prefs: jsonCol(u.notify_prefs, {}) });
 
-/** Directory — everyone can see who is on the team. */
+/**
+ * Directory — everyone can see who is on the team. Two modes:
+ *  - no page/limit/q: full list, unpaginated. Internal callers (the global
+ *    people store, used to populate assignee dropdowns etc.) rely on this.
+ *  - page/limit/q present: the People table view — paginated and searched
+ *    server-side.
+ */
 router.get('/', (req, res) => {
   const includeInactive = req.query.include_inactive === 'true';
+  const paginated = req.query.page !== undefined || req.query.limit !== undefined || req.query.q !== undefined;
+
+  const where = [];
+  const params = [];
+  if (!includeInactive) where.push('is_active = 1');
+  if (req.query.q) {
+    where.push('(name LIKE ? OR email LIKE ? OR title LIKE ?)');
+    const like = `%${req.query.q}%`;
+    params.push(like, like, like);
+  }
+  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  if (!paginated) {
+    const rows = db
+      .prepare(`SELECT ${PUBLIC_USER_COLS} FROM users ${clause} ORDER BY is_active DESC, name COLLATE NOCASE`)
+      .all(...params);
+    return res.json({ users: rows.map(shape) });
+  }
+
+  const { limit, offset, page } = parsePagination(req.query);
   const rows = db
     .prepare(
-      `SELECT ${PUBLIC_USER_COLS} FROM users
-        ${includeInactive ? '' : 'WHERE is_active = 1'}
-        ORDER BY is_active DESC, name COLLATE NOCASE`,
+      `SELECT ${PUBLIC_USER_COLS} FROM users ${clause}
+        ORDER BY is_active DESC, name COLLATE NOCASE LIMIT ? OFFSET ?`,
     )
-    .all();
-  res.json({ users: rows.map(shape) });
+    .all(...params, limit, offset);
+  const { total } = db.prepare(`SELECT COUNT(*) AS total FROM users ${clause}`).get(...params);
+
+  res.json({ users: rows.map(shape), total, page, limit });
 });
 
 router.get('/:id', (req, res) => {

@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api.js';
 import { useApp } from '../store.jsx';
-import { useFetch } from '../hooks.js';
+import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import {
-  Avatar, Badge, Callout, Card, EmptyState, Loading, PRIORITY_META, SOURCE_META,
-  Segmented, StatusPill, dueMeta, formatDate,
+  Avatar, Badge, Callout, Card, EmptyState, Loading, Pagination, PRIORITY_META, SOURCE_META,
+  SearchInput, Segmented, StatusPill, dueMeta, formatDate,
 } from '../components/ui.jsx';
 
 /**
@@ -22,18 +22,27 @@ export default function ActionItems() {
   const [status, setStatus] = useState('open');
   const [selected, setSelected] = useState(new Set());
   const [converting, setConverting] = useState(false);
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debouncedQuery]);
 
   const { data, loading, reload } = useFetch('/meetings/action-items', {
     status,
     owner_id: scope === 'mine' ? 'me' : scope === 'unowned' ? 'none' : undefined,
     project_id: projectId || undefined,
+    q: debouncedQuery || undefined,
+    page,
+    limit,
   });
 
   const items = data?.items || [];
+  const total = data?.total ?? items.length;
   const activePeople = people.filter((p) => p.is_active);
 
-  const overdue = items.filter((item) => item.due_date && item.due_date < new Date().toISOString().slice(0, 10));
-  const unowned = items.filter((item) => !item.owner_id);
+  const overdueCount = data?.overdue_count ?? 0;
+  const unownedCount = data?.unowned_count ?? 0;
 
   const patch = async (item, body) => {
     try {
@@ -94,15 +103,15 @@ export default function ActionItems() {
         </div>
       </div>
 
-      {status === 'open' && (overdue.length > 0 || unowned.length > 0) && (
+      {status === 'open' && (overdueCount > 0 || unownedCount > 0) && (
         <div className="grid c2" style={{ marginBottom: 14 }}>
-          {overdue.length > 0 && (
-            <Callout tone="danger" icon="alert" title={`${overdue.length} past their date`}>
+          {overdueCount > 0 && (
+            <Callout tone="danger" icon="alert" title={`${overdueCount} past their date`}>
               These were promised for a date that has already gone by. Convert them, re-date them, or drop them.
             </Callout>
           )}
-          {unowned.length > 0 && (
-            <Callout tone="warn" icon="user" title={`${unowned.length} with nobody on the hook`}>
+          {unownedCount > 0 && (
+            <Callout tone="warn" icon="user" title={`${unownedCount} with nobody on the hook`}>
               An action item without an owner is the one that gets forgotten. Assign each of these to a person.
             </Callout>
           )}
@@ -110,9 +119,10 @@ export default function ActionItems() {
       )}
 
       <div className="row wrap" style={{ marginBottom: 14, gap: 8 }}>
+        <SearchInput value={query} onChange={setQuery} placeholder="Search action items…" style={{ width: 220 }} />
         <Segmented
           value={scope}
-          onChange={(value) => { setScope(value); setSelected(new Set()); }}
+          onChange={(value) => { setScope(value); setSelected(new Set()); setPage(1); }}
           options={[
             { value: 'all', label: 'Everyone' },
             { value: 'mine', label: 'Mine' },
@@ -121,14 +131,14 @@ export default function ActionItems() {
         />
         <Segmented
           value={status}
-          onChange={(value) => { setStatus(value); setSelected(new Set()); }}
+          onChange={(value) => { setStatus(value); setSelected(new Set()); setPage(1); }}
           options={[
             { value: 'open', label: 'Open' },
             { value: 'converted', label: 'Converted' },
             { value: 'dropped', label: 'Dropped' },
           ]}
         />
-        <select className="select sm" style={{ width: 180 }} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+        <select className="select sm" style={{ width: 180 }} value={projectId} onChange={(e) => { setProjectId(e.target.value); setPage(1); }}>
           <option value="">All projects</option>
           {projects.map((project) => (
             <option key={project.id} value={project.id}>{project.name}</option>
@@ -143,7 +153,7 @@ export default function ActionItems() {
             Convert {selected.size} to tasks
           </button>
         )}
-        <span className="small muted">{items.length} item{items.length === 1 ? '' : 's'}</span>
+        <span className="small muted">{total} item{total === 1 ? '' : 's'}</span>
       </div>
 
       <Card bodyClass="tight">
@@ -292,6 +302,9 @@ export default function ActionItems() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && items.length > 0 && (
+          <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
         )}
       </Card>
     </div>

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../store.jsx';
-import { useFetch } from '../hooks.js';
+import { useDebounced, useFetch } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
-import { Avatar, Badge, Card, EmptyState, Loading, relativeTime } from '../components/ui.jsx';
+import { Avatar, Badge, Card, EmptyState, Loading, Pagination, SearchInput, relativeTime } from '../components/ui.jsx';
 
 const ENTITY_ICON = {
   task: 'check',
@@ -64,16 +64,23 @@ export default function ActivityLog() {
   const [projectId, setProjectId] = useState('');
   const [actorId, setActorId] = useState('');
   const [entityType, setEntityType] = useState('');
-  const [limit, setLimit] = useState(60);
+  const [query, setQuery] = useState('');
+  const debounced = useDebounced(query, 280);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  useEffect(() => setPage(1), [debounced, projectId, actorId, entityType]);
 
   const { data, loading } = useFetch('/activity', {
     project_id: projectId || undefined,
     actor_id: actorId || undefined,
     entity_type: entityType || undefined,
+    q: debounced || undefined,
+    page,
     limit,
   });
 
   const activities = data?.activities || [];
+  const total = data?.total ?? activities.length;
   const groups = groupByDay(activities);
 
   return (
@@ -88,6 +95,7 @@ export default function ActivityLog() {
       </div>
 
       <div className="row wrap" style={{ marginBottom: 14, gap: 8 }}>
+        <SearchInput value={query} onChange={setQuery} placeholder="Search activity…" style={{ width: 220 }} />
         <select className="select sm" style={{ width: 180 }} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
           <option value="">All projects</option>
           {projects.map((project) => (
@@ -108,7 +116,7 @@ export default function ActivityLog() {
           ))}
         </select>
         <span className="spacer" />
-        <span className="small muted">{data?.total ?? 0} entries</span>
+        <span className="small muted">{total} entries</span>
       </div>
 
       {loading ? (
@@ -158,11 +166,9 @@ export default function ActivityLog() {
             </Card>
           ))}
 
-          {activities.length >= limit && (
-            <button className="btn block" onClick={() => setLimit((current) => current + 60)}>
-              Load more
-            </button>
-          )}
+          <Card bodyClass="tight">
+            <Pagination page={page} limit={limit} total={total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
+          </Card>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from '../db.js';
 import { logActivity, logChanges } from '../activity.js';
 import { can, requireCap, visibleProjectIds } from '../permissions.js';
+import { parsePagination } from '../paginate.js';
 
 const router = express.Router();
 
@@ -27,7 +28,10 @@ const derivedUrl = (row) =>
 
 router.get('/', (req, res) => {
   const ids = visibleProjectIds(req.user);
-  if (!ids.length) return res.json({ services: [], conflicts: [] });
+  if (!ids.length) {
+    const { page, limit } = parsePagination(req.query);
+    return res.json({ services: [], conflicts: [], total: 0, page, limit });
+  }
 
   const where = [`s.project_id IN (${ids.map(() => '?').join(',')})`];
   const params = [...ids];
@@ -45,17 +49,22 @@ router.get('/', (req, res) => {
     params.push(like, like, like, like);
   }
 
+  const { limit, offset, page } = parsePagination(req.query);
+  const clause = `WHERE ${where.join(' AND ')}`;
   const services = db
     .prepare(
-      `${SERVICE_SELECT} WHERE ${where.join(' AND ')}
+      `${SERVICE_SELECT} ${clause}
         ORDER BY CASE s.environment ${ENVIRONMENTS.map((e, i) => `WHEN '${e}' THEN ${i}`).join(' ')} END,
-                 s.name COLLATE NOCASE`,
+                 s.name COLLATE NOCASE
+        LIMIT ? OFFSET ?`,
     )
-    .all(...params)
+    .all(...params, limit, offset)
     .map((s) => ({ ...s, effective_url: derivedUrl(s) }));
+  const { total } = db.prepare(`SELECT COUNT(*) AS total FROM services s ${clause}`).get(...params);
 
   // Two live services on the same host:port is the classic "why is my app not
-  // starting" bug, so surface it rather than making someone notice it.
+  // starting" bug, so surface it across ALL of a project's services (not just
+  // the current page) rather than making someone notice it.
   const conflicts = db
     .prepare(
       `SELECT host, port, environment, COUNT(*) AS count, GROUP_CONCAT(name, ', ') AS services
@@ -65,7 +74,7 @@ router.get('/', (req, res) => {
     )
     .all(...ids);
 
-  res.json({ services, conflicts });
+  res.json({ services, conflicts, total, page, limit });
 });
 
 router.get('/:id', (req, res) => {

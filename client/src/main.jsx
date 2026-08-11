@@ -46,12 +46,12 @@ function Toasts() {
 }
 
 function Shell() {
-  const { user, loading } = useApp();
+  const { user, loading, orgSettings } = useApp();
 
   if (loading) {
     return (
       <div className="auth-wrap">
-        <Loading label="Starting InfyTrack…" />
+        <Loading label={`Starting ${orgSettings.app_name}…`} />
       </div>
     );
   }

@@ -13,6 +13,7 @@ const shape = (user) => ({
   ...user,
   journey: jsonCol(user.journey, {}),
   notify_prefs: jsonCol(user.notify_prefs, {}),
+  theme_prefs: jsonCol(user.theme_prefs, {}),
 });
 
 /** Is this a brand new install? Drives the first-run setup screen. */
@@ -85,7 +86,7 @@ router.get('/me', authenticate, (req, res) => {
 });
 
 router.patch('/me', authenticate, (req, res) => {
-  const { name, title, phone, avatar_color, notify_prefs } = req.body || {};
+  const { name, title, phone, avatar_color, notify_prefs, theme_prefs } = req.body || {};
   db.prepare(
     `UPDATE users SET
         name         = COALESCE(?, name),
@@ -93,6 +94,7 @@ router.patch('/me', authenticate, (req, res) => {
         phone        = COALESCE(?, phone),
         avatar_color = COALESCE(?, avatar_color),
         notify_prefs = COALESCE(?, notify_prefs),
+        theme_prefs  = COALESCE(?, theme_prefs),
         updated_at   = datetime('now')
       WHERE id = ?`,
   ).run(
@@ -101,6 +103,7 @@ router.patch('/me', authenticate, (req, res) => {
     phone ?? null,
     avatar_color ?? null,
     notify_prefs ? JSON.stringify(notify_prefs) : null,
+    theme_prefs ? JSON.stringify(theme_prefs) : null,
     req.user.id,
   );
   res.json({ user: shape(findUserById(req.user.id)) });

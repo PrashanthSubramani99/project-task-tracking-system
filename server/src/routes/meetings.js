@@ -4,6 +4,7 @@ import { logActivity, logChanges, activityFor } from '../activity.js';
 import { notify, notifyMany } from '../notify.js';
 import { can, requireCap, visibleProjectIds } from '../permissions.js';
 import { parseActionItems } from '../parser.js';
+import { parsePagination } from '../paginate.js';
 import { createTask } from './tasks.js';
 
 const router = express.Router();
@@ -33,7 +34,10 @@ const MEETING_SELECT = `
 
 router.get('/', (req, res) => {
   const ids = visibleProjectIds(req.user);
-  if (!ids.length) return res.json({ meetings: [] });
+  if (!ids.length) {
+    const { page, limit } = parsePagination(req.query);
+    return res.json({ meetings: [], total: 0, page, limit });
+  }
 
   const where = [`m.project_id IN (${ids.map(() => '?').join(',')})`];
   const params = [...ids];
@@ -54,11 +58,14 @@ router.get('/', (req, res) => {
     where.push("EXISTS (SELECT 1 FROM action_items ai WHERE ai.meeting_id = m.id AND ai.status = 'open')");
   }
 
+  const { limit, offset, page } = parsePagination(req.query);
+  const clause = `WHERE ${where.join(' AND ')}`;
   const rows = db
-    .prepare(`${MEETING_SELECT} WHERE ${where.join(' AND ')} ORDER BY m.occurred_at DESC, m.id DESC LIMIT ?`)
-    .all(...params, Math.min(Number(req.query.limit) || 100, 500));
+    .prepare(`${MEETING_SELECT} ${clause} ORDER BY m.occurred_at DESC, m.id DESC LIMIT ? OFFSET ?`)
+    .all(...params, limit, offset);
+  const { total } = db.prepare(`SELECT COUNT(*) AS total FROM meetings m ${clause}`).get(...params);
 
-  res.json({ meetings: rows });
+  res.json({ meetings: rows, total, page, limit });
 });
 
 /**
@@ -67,7 +74,10 @@ router.get('/', (req, res) => {
  */
 router.get('/action-items', (req, res) => {
   const ids = visibleProjectIds(req.user);
-  if (!ids.length) return res.json({ items: [] });
+  if (!ids.length) {
+    const { page, limit } = parsePagination(req.query);
+    return res.json({ items: [], total: 0, page, limit });
+  }
 
   const where = [`m.project_id IN (${ids.map(() => '?').join(',')})`];
   const params = [...ids];
@@ -90,7 +100,13 @@ router.get('/action-items', (req, res) => {
     where.push('m.project_id = ?');
     params.push(req.query.project_id);
   }
+  if (req.query.q) {
+    where.push('ai.text LIKE ?');
+    params.push(`%${req.query.q}%`);
+  }
 
+  const { limit, offset, page } = parsePagination(req.query);
+  const clause = `WHERE ${where.join(' AND ')}`;
   const items = db
     .prepare(
       `SELECT ai.*, m.title AS meeting_title, m.occurred_at, m.source, m.project_id,
@@ -102,12 +118,31 @@ router.get('/action-items', (req, res) => {
          LEFT JOIN projects p ON p.id = m.project_id
          LEFT JOIN users o ON o.id = ai.owner_id
          LEFT JOIN tasks t ON t.id = ai.task_id
-        WHERE ${where.join(' AND ')}
-        ORDER BY ai.due_date IS NULL, ai.due_date ASC, m.occurred_at DESC`,
+        ${clause}
+        ORDER BY ai.due_date IS NULL, ai.due_date ASC, m.occurred_at DESC
+        LIMIT ? OFFSET ?`,
     )
-    .all(...params);
+    .all(...params, limit, offset);
+  const { total } = db
+    .prepare(`SELECT COUNT(*) AS total FROM action_items ai JOIN meetings m ON m.id = ai.meeting_id ${clause}`)
+    .get(...params);
 
-  res.json({ items });
+  // Summary counts across the FULL filtered set (not just this page), so the
+  // "N overdue" / "N with no owner" callouts stay accurate under pagination.
+  const { overdue_count } = db
+    .prepare(
+      `SELECT COUNT(*) AS overdue_count FROM action_items ai JOIN meetings m ON m.id = ai.meeting_id
+        ${clause} AND ai.due_date IS NOT NULL AND ai.due_date < date('now')`,
+    )
+    .get(...params);
+  const { unowned_count } = db
+    .prepare(
+      `SELECT COUNT(*) AS unowned_count FROM action_items ai JOIN meetings m ON m.id = ai.meeting_id
+        ${clause} AND ai.owner_id IS NULL`,
+    )
+    .get(...params);
+
+  res.json({ items, total, page, limit, overdue_count, unowned_count });
 });
 
 /**

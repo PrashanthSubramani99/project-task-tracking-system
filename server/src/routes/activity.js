@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../db.js';
 import { visibleProjectIds } from '../permissions.js';
+import { parsePagination } from '../paginate.js';
 
 const router = express.Router();
 
@@ -21,7 +22,10 @@ router.get('/', (req, res) => {
       where.push('a.project_id IS NULL');
     }
   } else {
-    if (!ids.length) return res.json({ activities: [], total: 0 });
+    if (!ids.length) {
+      const { page, limit } = parsePagination(req.query);
+      return res.json({ activities: [], total: 0, page, limit });
+    }
     where.push(`a.project_id IN (${ids.map(() => '?').join(',')})`);
     params.push(...ids);
   }
@@ -45,10 +49,14 @@ router.get('/', (req, res) => {
     where.push('a.created_at >= ?');
     params.push(req.query.since);
   }
+  if (req.query.q) {
+    where.push('(a.summary LIKE ? OR a.entity_label LIKE ?)');
+    const like = `%${req.query.q}%`;
+    params.push(like, like);
+  }
 
   const clause = `WHERE ${where.join(' AND ')}`;
-  const limit = Math.min(Number(req.query.limit) || 60, 300);
-  const offset = Number(req.query.offset) || 0;
+  const { limit, offset, page } = parsePagination(req.query);
 
   const activities = db
     .prepare(
@@ -64,7 +72,7 @@ router.get('/', (req, res) => {
 
   const { total } = db.prepare(`SELECT COUNT(*) AS total FROM activities a ${clause}`).get(...params);
 
-  res.json({ activities, total });
+  res.json({ activities, total, page, limit });
 });
 
 export default router;

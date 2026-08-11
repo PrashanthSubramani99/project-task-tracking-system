@@ -6,7 +6,7 @@ import { useDebounced } from '../hooks.js';
 import { Icon } from '../components/icons.jsx';
 import TaskModal from '../components/TaskModal.jsx';
 import {
-  Avatar, EmptyState, Loading, PRIORITY_META, PriorityTag, ProgressBar,
+  Avatar, EmptyState, Loading, Pagination, PRIORITY_META, PriorityTag, ProgressBar,
   STATUS_META, SearchInput, StatusPill, TYPE_META, dueMeta, formatDate, relativeTime,
 } from '../components/ui.jsx';
 
@@ -36,6 +36,9 @@ export default function Tasks() {
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounced(query, 280);
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
   const [data, setData] = useState({ tasks: [], total: 0 });
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(new Set());
@@ -45,7 +48,11 @@ export default function Tasks() {
     const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
     setFilters((f) => ({ ...f, [key]: value }));
     setSelected(new Set());
+    setPage(1);
   };
+
+  // Any filter or search change invalidates the current page.
+  useEffect(() => setPage(1), [debouncedQuery]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,7 +67,8 @@ export default function Tasks() {
         overdue: filters.overdue ? 'true' : undefined,
         sort: filters.sort,
         q: debouncedQuery || undefined,
-        limit: 300,
+        page,
+        limit,
       });
       setData(result);
     } catch (err) {
@@ -68,7 +76,7 @@ export default function Tasks() {
     } finally {
       setLoading(false);
     }
-  }, [filters, debouncedQuery, toast]);
+  }, [filters, debouncedQuery, page, limit, toast]);
 
   useEffect(() => {
     load();
@@ -374,6 +382,9 @@ export default function Tasks() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && tasks.length > 0 && (
+          <Pagination page={page} limit={limit} total={data.total} onPageChange={setPage} onLimitChange={(n) => { setLimit(n); setPage(1); }} />
         )}
       </div>
 
